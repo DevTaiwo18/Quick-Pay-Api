@@ -39,7 +39,7 @@ exports.register = async (req, res) => {
                path.join(__dirname, '../emails', 'welcome.ejs'),
                {
                   username,
-                  unsubscribe_link: `http://localhost:5000/api/v1/unsubscribe/${user.id}`
+                  unsubscribe_link: `https://quick-pay-api.onrender.com/api/v1/unsubscribe/${user.id}`
                }
             );
             const mailOptions = {
