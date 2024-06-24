@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your OTP Code</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #ebf8ff;
+            color: #1a202c;
+            padding: 20px;
+            text-align: center;
+            margin: 0;
+        }
+        h1 {
+            color: #3B82F6;
+        }
+        p {
+            margin: 10px 0;
+        }
+        .otp {
+            font-size: 1.5em;
+            color: #3B82F6;
+            font-weight: 700;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Your OTP Code</h1>
+        <p>Your OTP code for password reset is:</p>
+        <p class="otp"><%= otp %></p>
+        <p>This code is valid for 10 minutes.</p>
+        <p class="footer">Best regards, <br/> The Quick-Pay Team</p>
+    </div>
+</body>
+</html>
