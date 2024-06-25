@@ -57,4 +57,6 @@ router.post(
    authController.createNewPassword
 );
 
+router.post('/logout', authMiddleware, authController.logout);
+
 module.exports = router;

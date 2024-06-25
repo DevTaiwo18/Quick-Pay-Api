@@ -4,12 +4,25 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const nodemailer = require('nodemailer');
 const ejs = require('ejs');
+const BlacklistedToken = require('../models/BlacklistedToken');
 const path = require('path');
 
 const transporter = nodemailer.createTransport({
    service: 'Gmail',
    auth: { user: 'adeyemitaiwo24434@gmail.com', pass: 'oapuimxcoqlelhoc' }
 });
+
+const sendEmail = async (to, subject, template, context) => {
+   try {
+      const emailTemplate = await ejs.renderFile(path.join(__dirname, '../emails', template), context);
+      const mailOptions = { to, subject, html: emailTemplate };
+      transporter.sendMail(mailOptions, (error) => {
+         if (error) console.error(`Failed to send ${subject} email:`, error);
+      });
+   } catch (err) {
+      console.error('Failed to render email template:', err);
+   }
+};
 
 // Register user and navigate to create PIN page
 exports.register = async (req, res) => {
@@ -35,22 +48,15 @@ exports.register = async (req, res) => {
 
          // Send welcome email
          if (user.isSubscribed) {
-            const emailTemplate = await ejs.renderFile(
-               path.join(__dirname, '../emails', 'welcome.ejs'),
+            await sendEmail(
+               user.email,
+               'Welcome to Quick-Pay',
+               'welcome.ejs',
                {
                   username,
                   unsubscribe_link: `https://quick-pay-api.onrender.com/api/v1/unsubscribe/${user.id}`
                }
             );
-            const mailOptions = {
-               to: user.email,
-               subject: 'Welcome to Quick-Pay',
-               html: emailTemplate
-            };
-
-            transporter.sendMail(mailOptions, (error) => {
-               if (error) console.error('Failed to send welcome email:', error);
-            });
          }
 
          res.json({ token, navigateTo: 'createPin', user });
@@ -63,8 +69,7 @@ exports.register = async (req, res) => {
 
 // Create PIN
 exports.createPin = async (req, res) => {
-   const { pin } = req.body; 
-   console.log(pin);
+   const { pin } = req.body;
    const userId = req.user.id;
 
    try {
@@ -85,8 +90,6 @@ exports.createPin = async (req, res) => {
       res.status(500).send('Server error');
    }
 };
-
-
 
 // Login user
 exports.login = async (req, res) => {
@@ -120,21 +123,12 @@ exports.requestPasswordReset = async (req, res) => {
 
       const otp = Math.floor(1000 + Math.random() * 9000).toString();
       user.otp = otp;
-      user.otpExpires = Date.now() + 10 * 60 * 1000;
+      user.otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
 
       await user.save();
 
-      const emailTemplate = await ejs.renderFile(path.join(__dirname, '../emails', 'otp.ejs'), { otp });
-      const mailOptions = {
-         to: user.email,
-         subject: 'Password Reset OTP',
-         html: emailTemplate
-      };
-
-      transporter.sendMail(mailOptions, (error) => {
-         if (error) return res.status(500).json({ msg: 'Failed to send OTP' });
-         res.json({ msg: 'OTP sent', navigateTo: 'confirmOtp' });
-      });
+      await sendEmail(user.email, 'Password Reset OTP', 'otp.ejs', { otp });
+      res.json({ msg: 'OTP sent', navigateTo: 'confirmOtp' });
    } catch (err) {
       console.error(err.message);
       res.status(500).send('Server error');
@@ -171,6 +165,31 @@ exports.createNewPassword = async (req, res) => {
       await user.save();
 
       res.json({ msg: 'Password reset successfully' });
+   } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Server error');
+   }
+};
+
+// Logout user
+exports.logout = async (req, res) => {
+   const { token } = req.body;
+   if (!token) {
+      return res.status(401).json({ msg: 'No token, authorization denied' });
+   }
+
+   try {
+      const decoded = jwt.verify(token, process.env.jwtSecret);
+      const expiresAt = new Date(decoded.exp * 1000);
+
+      const blacklistedToken = new BlacklistedToken({
+         token,
+         expiresAt
+      });
+
+      await blacklistedToken.save();
+
+      res.json({ msg: 'Logout successful' });
    } catch (err) {
       console.error(err.message);
       res.status(500).send('Server error');
