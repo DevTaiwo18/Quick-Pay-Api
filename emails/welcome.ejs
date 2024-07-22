@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Quick-Pay</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            padding: 10px;
+            max-width: 600px;
+            width: 95%;
+            text-align: center;
+            border: 1px solid gray;
+            box-sizing: border-box;
+        }
+
+        .header {
+            background-color: #3B82F6;
+            color: #ffffff;
+            padding: 10px;
+            border-radius: 0;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .content {
+            padding: 16px;
+        }
+
+        .content p {
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        .btn {
+            background-color: #3B82F6;
+            color: #ffffff;
+            padding: 10px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #2563EB;
+        }
+
+        .footer {
+            padding: 15px;
+        }
+
+        /* Media Queries for Responsiveness */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 18px;
+            }
+
+            .content p {
+                font-size: 12px;
+            }
+
+            .btn {
+                padding: 8px 20px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 16px;
+            }
+
+            .content p {
+                font-size: 12px;
+            }
+
+            .btn {
+                padding: 6px 18px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome to Quick-Pay, <%= username %>!</h1>
+        </div>
+        <div class="content">
+            <p>We are thrilled to have you on board. Quick-Pay offers a wide range of services to make your life easier
+                and more convenient.</p>
+            <p>We are committed to providing you with the best service experience. If you have any questions or need
+                assistance, please feel free to contact our support team.</p>
+            <a href="https://quick-pay-liard.vercel.app/" class="btn">Get Started</a>
+        </div>
+        <div class="footer">
+            <p>Best regards, <br /> The Quick-Pay Team</p>
+            <p>If you no longer wish to receive these emails, you can <a href="<%= unsubscribe_link %>"
+                    style="color: #3B82F6;">unsubscribe here</a>.</p>
+            <p>© 2024 Quick-Pay.finance All rights reserved.</p>
+        </div>
+    </div>
+</body>
+
+</html>
