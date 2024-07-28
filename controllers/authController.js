@@ -6,6 +6,8 @@ const nodemailer = require('nodemailer');
 const ejs = require('ejs');
 const BlacklistedToken = require('../models/BlacklistedToken');
 const path = require('path');
+const axios = require('axios');
+const Wallet = require('../models/wallet');
 
 const transporter = nodemailer.createTransport({
    service: 'Gmail',
@@ -24,7 +26,6 @@ const sendEmail = async (to, subject, template, context) => {
    }
 };
 
-// Register user and navigate to create PIN page
 exports.register = async (req, res) => {
    const errors = validationResult(req);
    if (!errors.isEmpty()) {
@@ -42,30 +43,62 @@ exports.register = async (req, res) => {
       user.password = await bcrypt.hash(password, salt);
       await user.save();
 
-      const payload = { user: { id: user.id } };
-      jwt.sign(payload, process.env.jwtSecret, { expiresIn: '5 days' }, async (err, token) => {
-         if (err) throw err;
+      // Generate Wallet for User
+      const accountNumber = generateAccountNumber();
 
-         // Send welcome email
-         if (user.isSubscribed) {
-            await sendEmail(
-               user.email,
-               'Welcome to Quick-Pay',
-               'welcome.ejs',
-               {
-                  username,
-                  unsubscribe_link: `https://quick-pay-api.onrender.com/api/v1/unsubscribe/${user.id}`
-               }
-            );
+      const monnifyResponse = await axios.post('https://api.monnify.com/api/v1/bank-transfer/reserved-accounts', {
+         accountReference: `Quick-Pay-${user._id}`,
+         accountName: `Quick-Pay-${username}`,
+         currencyCode: 'NGN',
+         contractCode: process.env.MONNIFY_CONTRACT_CODE,
+         customerEmail: email,
+         customerName: username,
+         getAllAvailableBanks: true
+      }, {
+         headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.MONNIFY_API_KEY}:${process.env.MONNIFY_SECRET_KEY}`
          }
+      });
 
-         res.json({ token, navigateTo: 'createPin', user });
+      const newWallet = new Wallet({
+         customerName: username,
+         customerBalance: 0,
+         accountNumber: accountNumber
+      });
+
+      await newWallet.save();
+
+      if (user.isSubscribed) {
+         await sendEmail(
+            user.email,
+            'Welcome to Quick-Pay',
+            'welcome.ejs',
+            {
+               username,
+               unsubscribe_link: `https://quick-pay-api.onrender.com/api/v1/unsubscribe/${user._id}`
+            }
+         );
+      }
+
+      res.json({
+         token,
+         navigateTo: 'createPin',
+         user,
+         wallet: newWallet,
+         monnifyResponse: monnifyResponse.data
       });
    } catch (err) {
       console.error(err.message);
       res.status(500).send('Server error');
    }
 };
+
+const generateAccountNumber = () => {
+   return Math.floor(Math.random() * 1000000000);
+};
+
+
 
 // Create PIN
 exports.createPin = async (req, res) => {

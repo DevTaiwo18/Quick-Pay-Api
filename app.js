@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors")
 const morgan = require("morgan")
 const unsubscribeRoute = require('./routes/unsubscribe');
+const walletRoutes = require('./routes/wallet');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use(express.json({ extended: false }));
 
 // Define Routes
 app.use('/api/v1/auth', require('./routes/auth'));
+app.use('/api/v1', walletRoutes);
 app.use('/api/v1/unsubscribe', unsubscribeRoute);
 
 app.all("*", (req, res) =>  {
