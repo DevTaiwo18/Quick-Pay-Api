@@ -4,10 +4,10 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const nodemailer = require('nodemailer');
 const ejs = require('ejs');
-const BlacklistedToken = require('../models/BlacklistedToken');
 const path = require('path');
 const axios = require('axios');
 const Wallet = require('../models/wallet');
+const BlacklistedToken = require('../models/BlacklistedToken');
 
 const transporter = nodemailer.createTransport({
    service: 'Gmail',
@@ -29,75 +29,84 @@ const sendEmail = async (to, subject, template, context) => {
 exports.register = async (req, res) => {
    const errors = validationResult(req);
    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+       return res.status(400).json({ errors: errors.array() });
    }
 
    const { username, email, password } = req.body;
 
    try {
-      let user = await User.findOne({ email });
-      if (user) return res.status(400).json({ msg: 'User already exists' });
+       // Check if user already exists
+       let user = await User.findOne({ email });
+       if (user) {
+           return res.status(400).json({ msg: 'User already exists' });
+       }
 
-      user = new User({ username, email, password, isSubscribed: true });
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(password, salt);
-      await user.save();
+       // Create new user
+       user = new User({
+           username,
+           email,
+           password,
+           isSubscribed: true
+       });
 
-      // Generate Wallet for User
-      const accountNumber = generateAccountNumber();
+       // Hash password
+       const salt = await bcrypt.genSalt(10);
+       user.password = await bcrypt.hash(password, salt);
+       
+       // Save user to database
+       await user.save();
 
-      const monnifyResponse = await axios.post('https://api.monnify.com/api/v1/bank-transfer/reserved-accounts', {
-         accountReference: `Quick-Pay-${user._id}`,
-         accountName: `Quick-Pay-${username}`,
-         currencyCode: 'NGN',
-         contractCode: process.env.MONNIFY_CONTRACT_CODE,
-         customerEmail: email,
-         customerName: username,
-         getAllAvailableBanks: true
-      }, {
-         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.MONNIFY_API_KEY}:${process.env.MONNIFY_SECRET_KEY}`
-         }
-      });
+       // Create JWT payload
+       const payload = {
+           user: {
+               id: user._id
+           }
+       };
 
-      const newWallet = new Wallet({
-         customerName: username,
-         customerBalance: 0,
-         accountNumber: accountNumber
-      });
+       // Sign and return JWT
+       jwt.sign(
+           payload,
+           process.env.jwtSecret,
+           { expiresIn: '5 days' },
+           async (err, token) => {
+               if (err) {
+                   console.error('JWT generation failed:', err.message);
+                   return res.status(500).json({ 
+                       msg: 'JWT generation failed', 
+                       error: err.message 
+                   });
+               }
 
-      await newWallet.save();
+               // Send welcome email if user is subscribed
+               if (user.isSubscribed) {
+                   await sendEmail(
+                       user.email,
+                       'Welcome to Our Platform',
+                       'welcome.ejs',
+                       {
+                           username,
+                           unsubscribe_link: `${process.env.API_URL}/api/v1/unsubscribe/${user._id}`
+                       }
+                   );
+               }
 
-      if (user.isSubscribed) {
-         await sendEmail(
-            user.email,
-            'Welcome to Quick-Pay',
-            'welcome.ejs',
-            {
-               username,
-               unsubscribe_link: `https://quick-pay-api.onrender.com/api/v1/unsubscribe/${user._id}`
-            }
-         );
-      }
-
-      res.json({
-         token,
-         navigateTo: 'createPin',
-         user,
-         wallet: newWallet,
-         monnifyResponse: monnifyResponse.data
-      });
+               // Return success response
+               res.json({
+                   token,
+                   navigateTo: 'createPin',
+                   user
+               });
+           }
+       );
    } catch (err) {
-      console.error(err.message);
-      res.status(500).send('Server error');
+       console.error('User registration failed:', err.message);
+       res.status(500).send('Server error');
    }
 };
 
 const generateAccountNumber = () => {
    return Math.floor(Math.random() * 1000000000);
 };
-
 
 
 // Create PIN
